@@ -1,5 +1,5 @@
 {
-  "name": "three-player-controller",
+  "name": "three-player-ctrl",
   "version": "0.0.1",
   "description": "A threejs player controller",
   "main": "index.js",
