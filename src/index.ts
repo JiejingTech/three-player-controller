@@ -995,8 +995,8 @@ class PlayerCtrlInput {
         const origTouch = this.activeTouches.get(firstTouch.identifier);
 
         if (origTouch
-            && Math.abs(firstTouch.clientX - origTouch.startPos.x) <= this.settings.touchErrorRadius
-        && Math.abs(firstTouch.clientY - origTouch.startPos.y) <= this.settings.touchErrorRadius) {
+            && Math.abs(firstTouch.pageX - origTouch.startPos.x) <= this.settings.touchErrorRadius
+        && Math.abs(firstTouch.pageY - origTouch.startPos.y) <= this.settings.touchErrorRadius) {
 
             const hit = new THREE.Vector2();
             hit.x = ( touches[0].pageX / document.body.clientWidth ) * 2 - 1;
@@ -1166,10 +1166,10 @@ class PlayerCtrlInput {
      */
     private detectTouchType(touch: Touch): TouchType {
         if (this.navTouchCenter && this.navTouchSize) {
-            if (touch.clientX > Math.max(0, this.navTouchCenter.x - this.navTouchSize / 2)
-                && touch.clientX < Math.min(window.innerWidth, this.navTouchCenter.x + this.navTouchSize / 2)
-            && touch.clientY > Math.max(0, this.navTouchCenter.y - this.navTouchSize / 2)
-            && touch.clientY < Math.min(window.innerHeight, this.navTouchCenter.y + this.navTouchSize / 2)) {
+            if (touch.pageX > Math.max(0, this.navTouchCenter.x - this.navTouchSize / 2)
+                && touch.pageX < Math.min(window.innerWidth, this.navTouchCenter.x + this.navTouchSize / 2)
+            && touch.pageY > Math.max(0, this.navTouchCenter.y - this.navTouchSize / 2)
+            && touch.pageY < Math.min(window.innerHeight, this.navTouchCenter.y + this.navTouchSize / 2)) {
                 return 'NAV';
             } else {
                 return 'ROTATE';
