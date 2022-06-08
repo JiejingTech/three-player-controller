@@ -47,6 +47,13 @@ const _CTRL_MODE_OB = 2;
 type ControlMode = -1 | 0 | 1 | 2;
 
 /**
+ * 旋转模式：
+ * 0 - 持续旋转
+ * 1 - 即时旋转
+ */
+type RotateMode = 0 | 1;
+
+/**
  * 缓存生效的触控信息
  */
 class TouchInfo {
@@ -55,6 +62,7 @@ class TouchInfo {
         readonly identifier: number,
 		// 触控开始位置
         readonly startPos: THREE.Vector2,
+        readonly lastPos: THREE.Vector2,
 		// 当前位置
         readonly currPos: THREE.Vector2,
 		// 触控类型（NAV/ROTATE）
@@ -118,14 +126,14 @@ export class PlayerNavSettings {
      * 是否按住鼠标进行视角旋转，-1标识不需要
      */
     public holdMouseKeyToRotate = _MOUSE_RIGHT_KEY;
-    /**
-     * 鼠标移动放大系数
-     */
-    public mouseMoveScaleVector = new THREE.Vector2(50, 1000);
-    /**
-     * 触控移动放大系数
-     */
-    public touchMoveScaleVector = new THREE.Vector2(8000, 8000);
+    // /**
+    //  * 鼠标移动放大系数
+    //  */
+    // public mouseMoveScaleVector = new THREE.Vector2(50, 1000);
+    // /**
+    //  * 触控移动放大系数
+    //  */
+    // public touchMoveScaleVector = new THREE.Vector2(8000, 8000);
     /**
      * 事件重复timeout（毫秒）
      */
@@ -134,6 +142,10 @@ export class PlayerNavSettings {
      * 任务标记模型地址
      */
     public markerModelPath = '';
+    /**
+     * 旋转模式
+     */
+    public rotateMode: RotateMode = 1;
 }
 
 /**
@@ -264,6 +276,29 @@ export class PlayerController {
         }
 
 		this.initEventListeners();
+    
+        let testVec = new THREE.Vector3(-1, 0, 0);
+        testVec.applyQuaternion(new THREE.Quaternion())
+        testVec.applyEuler(new THREE.Euler(Math.PI / 2, 0, 0, 'YXZ'));
+        console.log(testVec);
+
+        var quaternion = new THREE.Quaternion();
+        // 旋转轴new THREE.Vector3(0,1,0)
+        // 旋转角度Math.PI/2
+        quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2)
+        console.log('查看四元数结构',quaternion);
+        let testVec2 = new THREE.Vector3(-1, 0, 0);
+        testVec2.applyQuaternion(quaternion);
+        console.log(testVec2);
+
+
+        let testVec3 = new THREE.Vector3(1, 0, 1).normalize();
+        let testVec4 = new THREE.Vector3(1, 0, -1).normalize();
+
+        testVec3.cross(_yAxis);
+        console.log(testVec3, testVec4);
+
+          
     }
 
 	/**
@@ -527,11 +562,21 @@ export class PlayerController {
 					}
 	
 					if (inputRotateVector.length() > 0) {
+                        // 沿着y轴完成旋转
+                        this.playerObOffset.applyAxisAngle(_yAxis, -inputRotateVector.x);
 						let newOffset = this.playerObOffset.clone();
-						// 这里有点问题，又是转动方向会反向
-						newOffset.applyAxisAngle(_yAxis, -inputRotateVector.x)
-						newOffset.applyAxisAngle(_xAxis, -inputRotateVector.y)
-						this.playerObOffset.copy(newOffset);
+
+                        // 沿着当前球面切线方向完成x轴旋转
+                        var rotateQuat = new THREE.Quaternion();
+                        let normalAxes = new THREE.Vector3(newOffset.x, 0, newOffset.z).normalize();
+                        normalAxes.cross(_yAxis);
+                        rotateQuat.setFromAxisAngle(normalAxes, -inputRotateVector.y);
+                        newOffset.applyQuaternion(rotateQuat);
+                        
+                        // 如果造成再X-Z平面反向，阻止转换
+                        if (Math.sign(newOffset.x) == Math.sign(this.playerObOffset.x) && Math.sign(newOffset.z) == Math.sign(this.playerObOffset.z)) {
+                            this.playerObOffset.applyQuaternion(rotateQuat);
+                        }
 					}
 					break;
 				case _CTRL_MODE_CHASE:
@@ -789,7 +834,10 @@ class PlayerCtrlInput {
 
         this.addEventListeners();
     }
-
+    
+    /**
+     * @returns 获取输入的原始Nav向量
+     */
     public getNavVector(): THREE.Vector2 {
         if (this.onMobile) {
             const navTouchId = this.activeToucheTypes.get('NAV');
@@ -807,22 +855,29 @@ class PlayerCtrlInput {
         }
     }
 
+    /**
+     * @returns 获取输入的原始旋转向量
+     */
     public getRotateVector(): THREE.Vector2 {
         if (this.onMobile) {
             const rotateVectorId = this.activeToucheTypes.get('ROTATE');
-            const rotateVector = rotateVectorId !== undefined ? this.activeTouches.get(rotateVectorId): undefined;
-            return rotateVector ? new THREE.Vector2(
-                (rotateVector.currPos.x - rotateVector.startPos.x) / this.settings.touchMoveScaleVector.x,
-                (rotateVector.currPos.y - rotateVector.startPos.y) / this.settings.touchMoveScaleVector.y): _STAY_VECTOR;
+            const rotateTouch = rotateVectorId !== undefined ? this.activeTouches.get(rotateVectorId): undefined;
+            if (this.settings.rotateMode == 0) {
+                return rotateTouch ? new THREE.Vector2(
+                    (rotateTouch.currPos.x - rotateTouch.startPos.x) / window.innerWidth * Math.PI / 16,
+                    (rotateTouch.currPos.y - rotateTouch.startPos.y) / window.innerHeight * Math.PI / 128): _STAY_VECTOR;
+            }
+            return rotateTouch ? new THREE.Vector2(
+                (rotateTouch.currPos.x - rotateTouch.lastPos.x) / window.innerWidth * 4 * Math.PI,
+                (rotateTouch.currPos.y - rotateTouch.lastPos.y) / window.innerHeight * Math.PI / 2): _STAY_VECTOR;
         } else {
-            // const rotateVector = new THREE.Vector2(
-            // this.mouseMoveVector.x / this.settings.mouseMoveScaleVector.x,
-            // this.mouseMoveVector.y / this.settings.mouseMoveScaleVector.y);
-            const rotateVector = new THREE.Vector2(
-                this.mouseMoveVector.x / window.innerWidth,
-                this.mouseMoveVector.y / window.innerHeight).normalize().divide(this.settings.mouseMoveScaleVector);
-                this.mouseMoveVector.set(0, 0);
-                return rotateVector;
+            if (this.settings.rotateMode == 0) {
+                return new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16,
+                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 128);
+            }
+            return new THREE.Vector2(
+                this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI,
+                this.mouseMoveVector.y / window.innerHeight * Math.PI / 2);
         }
     }
 
@@ -1050,7 +1105,7 @@ class PlayerCtrlInput {
             return;
         }
 
-        const toAddTouch = new TouchInfo(touch.identifier, touchPos, touchPos, touchType);
+        const toAddTouch = new TouchInfo(touch.identifier, touchPos, touchPos, touchPos, touchType);
 
         if ('NAV' === touchType) {
             this.sendTouchEvent(_NAV_TOUCH_DOWN, touchPos);
@@ -1081,7 +1136,7 @@ class PlayerCtrlInput {
         const touchPos = new THREE.Vector2(touch.pageX, touch.pageY);
         const origTouch = this.activeTouches.get(touch.identifier);
         if (origTouch) {
-            const newTouch = new TouchInfo(touch.identifier, origTouch.startPos, touchPos, origTouch.touchType);
+            const newTouch = new TouchInfo(touch.identifier, origTouch.startPos, origTouch.currPos, touchPos, origTouch.touchType);
 
             if ('NAV' === origTouch.touchType) {
                 this.sendTouchEvent(_NAV_TOUCH_DOWN, touchPos);
