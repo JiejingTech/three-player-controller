@@ -276,29 +276,6 @@ export class PlayerController {
         }
 
 		this.initEventListeners();
-    
-        let testVec = new THREE.Vector3(-1, 0, 0);
-        testVec.applyQuaternion(new THREE.Quaternion())
-        testVec.applyEuler(new THREE.Euler(Math.PI / 2, 0, 0, 'YXZ'));
-        console.log(testVec);
-
-        var quaternion = new THREE.Quaternion();
-        // 旋转轴new THREE.Vector3(0,1,0)
-        // 旋转角度Math.PI/2
-        quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2)
-        console.log('查看四元数结构',quaternion);
-        let testVec2 = new THREE.Vector3(-1, 0, 0);
-        testVec2.applyQuaternion(quaternion);
-        console.log(testVec2);
-
-
-        let testVec3 = new THREE.Vector3(1, 0, 1).normalize();
-        let testVec4 = new THREE.Vector3(1, 0, -1).normalize();
-
-        testVec3.cross(_yAxis);
-        console.log(testVec3, testVec4);
-
-          
     }
 
 	/**
@@ -871,13 +848,16 @@ class PlayerCtrlInput {
                 (rotateTouch.currPos.x - rotateTouch.lastPos.x) / window.innerWidth * 4 * Math.PI,
                 (rotateTouch.currPos.y - rotateTouch.lastPos.y) / window.innerHeight * Math.PI / 2): _STAY_VECTOR;
         } else {
+            let resVector = new THREE.Vector2();
             if (this.settings.rotateMode == 0) {
-                return new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16,
-                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 128);
+                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16,
+                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 128));
+            } else {
+                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI,
+                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 2));
             }
-            return new THREE.Vector2(
-                this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI,
-                this.mouseMoveVector.y / window.innerHeight * Math.PI / 2);
+            this.mouseMoveVector.copy(_STAY_VECTOR);
+            return resVector;
         }
     }
 
