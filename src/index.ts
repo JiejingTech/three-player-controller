@@ -580,8 +580,6 @@ export class PlayerController {
                         const newLookAtOffset = new THREE.Vector3(newLookAt.x - this.playerProxy.position.x, newLookAt.y - this.playerProxy.position.y, newLookAt.z - this.playerProxy.position.z).normalize();
                         if (Math.sign(newLookAtOffset.x) == Math.sign(oldLookAtOffset.x) && Math.sign(newLookAtOffset.z) == Math.sign(oldLookAtOffset.z)) {
                 	        this.playerProxy.rotation.x -= inputRotateVector.y;
-                        } else {
-                            console.log(oldLookAtOffset, newLookAtOffset);
                         }
                 	}
 					break;
