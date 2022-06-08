@@ -6,6 +6,7 @@ import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 import { NavTouchPad, _NAV_TOUCH_DOWN, _NAV_TOUCH_UP } from './touch/NavTouchPad';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import * as utils from './vecutils';
+import { FiniteStateMachine } from './fsm';
 
 /**
  * 触控类型
@@ -503,7 +504,7 @@ export class PlayerController {
 	 * @param deltaTime delta时间段
 	 */
     private updateControls( deltaTime: number ) {
-
+        // 如果任务队列存在任务，用户输入被忽略，进入自动寻址
         if (this.taskQueue.length) {
             const [action, target] = this.taskQueue[0];
             const taskProcessFunc = this.taskProcessors.get(action); 
@@ -569,7 +570,19 @@ export class PlayerController {
 				case _CTRL_MODE_FPS:
                 	if (inputRotateVector.length() > 0) {
                 	    this.playerProxy.rotation.y -= inputRotateVector.x;
-                	    this.playerProxy.rotation.x -= inputRotateVector.y;
+                        let tmpProxy = this.playerProxy.clone();
+                        // 上下预留30度安全区域
+                        tmpProxy.rotation.x -= (inputRotateVector.y + Math.sign(inputRotateVector.y) * Math.PI / 6);
+
+                        const oldLookAt = utils.getLookAtOfObject(this.playerProxy);
+                        const oldLookAtOffset = new THREE.Vector3(oldLookAt.x - this.playerProxy.position.x, oldLookAt.y - this.playerProxy.position.y, oldLookAt.z - this.playerProxy.position.z).normalize();
+                        const newLookAt = utils.getLookAtOfObject(tmpProxy);
+                        const newLookAtOffset = new THREE.Vector3(newLookAt.x - this.playerProxy.position.x, newLookAt.y - this.playerProxy.position.y, newLookAt.z - this.playerProxy.position.z).normalize();
+                        if (Math.sign(newLookAtOffset.x) == Math.sign(oldLookAtOffset.x) && Math.sign(newLookAtOffset.z) == Math.sign(oldLookAtOffset.z)) {
+                	        this.playerProxy.rotation.x -= inputRotateVector.y;
+                        } else {
+                            console.log(oldLookAtOffset, newLookAtOffset);
+                        }
                 	}
 					break;
 			}
@@ -861,6 +874,9 @@ class PlayerCtrlInput {
         }
     }
 
+    /**
+     * @returns 获取输入的原始跳跃标记
+     */
     public getJumpFlag(): boolean {
         if (this.onMobile) {
             // TODO 屏幕上需要专门的控件按钮
@@ -870,6 +886,9 @@ class PlayerCtrlInput {
         }
     }
 
+    /**
+     * @returns 获取输入的原始跑动标记
+     */
     public getRunFlag(): boolean {
         if (this.onMobile) {
             const navTouchId = this.activeToucheTypes.get('NAV');
@@ -1213,127 +1232,6 @@ class PlayerCtrlInput {
         return 'NAV';
     }
 }
-
-/**
- * 有限状态机
- */
-class FiniteStateMachine {
-
-	/**
-	 * 状态集合
-	 */
-    private states = new Set<string>();
-	/**
-	 * 当前状态
-	 */
-    private currentState?: string;
-	/**
-	 * 状态转移
-	 */
-    private transitions = new Map<string, Map<string, (deltaTime: number, input: any) => boolean>>();
-	/**
-	 * 状态进入函数
-	 */
-    private onEnterFuncs = new Map<string, (prevState?: string) => void>();
-	/**
-	 * 状态退出函数
-	 */
-    private onExitFuncs = new Map<string, () => void>();
-	/**
-	 * 添加状态
-	 * @param state 状态key
-	 * @param onEnter 状态进入函数
-	 * @param onExit 状态退出函数
-	 */
-    public addState(state: string, onEnter?: (prevState?: string) => void, onExit?: () => void) {
-        this.states.add(state);
-        if (onEnter) {
-            this.onEnterFuncs.set(state, onEnter);
-        }
-        if (onExit) {
-            this.onExitFuncs.set(state, onExit);
-        }
-    }
-	/**
-	 * 注册状态进入函数
-	 * @param state 状态key
-	 * @param onEnter 状态进入函数
-	 */
-    public registerEnterFunc(state: string, onEnter: (prevState?: string) => void) {
-        this.onEnterFuncs.set(state, onEnter);
-    }
-	/**
-	 * 注册状态退出函数
-	 * @param state 状态key
-	 * @param onExit 状态退出函数
-	 */
-    public registerExitFunc(state: string, onExit:  () => void) {
-        this.onExitFuncs.set(state, onExit);
-    }
-	/**
-	 * 添加状态转移
-	 * @param sourceState 起始状态
-	 * @param targetState 目标状态
-	 * @param checkFunc guard函数，是否进行转移
-	 */
-    public addTransition(sourceState: string, targetState: string, checkFunc: (deltaTime: number, input: any) => boolean) {
-        if (!this.transitions.has(sourceState)) {
-            this.transitions.set(sourceState, new Map<string, (deltaTime: number, input: any) => boolean>())
-        }
-        this.transitions.get(sourceState)!.set(targetState, checkFunc);
-    }
-	/**
-	 * 在初始状态开启状态机器
-	 * @param initState 初始状态
-	 */
-    public startup(initState: string) {
-        this.currentState = initState;
-    }
-	/**
-	 * 更新函数
-	 * @param deltaTime delta时间段
-	 * @param input 
-	 */
-    public update(deltaTime: number, input: any) {
-        if (this.currentState && this.transitions.has(this.currentState)) {
-            const transitionsByTarget = this.transitions.get(this.currentState)
-            for ( let [targetState, checkFunc] of Array.from(transitionsByTarget!.entries()) ) {
-                if (checkFunc(deltaTime, input)) {
-                    this.transition(targetState);
-                }
-            }
-        }
-    }
-	/**
-	 * 状态转移过程
-	 * @param targetState 目标状态
-	 * @returns 
-	 */
-    private transition(targetState: string) {
-        const prevState = this.currentState;
-
-        if (prevState) {
-            if (prevState == targetState) {
-                return;
-            }
-            if (this.onExitFuncs.has(prevState)) {
-                this.onExitFuncs.get(prevState)!()
-            }
-        }
-
-        this.currentState = targetState;
-        if (this.onEnterFuncs.has(targetState)) {
-            this.onEnterFuncs.get(targetState)!(prevState);
-        }
-        console.log('FSM: ' + prevState + ' => ' + targetState);
-    }
-	/**
-	 * getter函数：当前状态
-	 */
-    get state() {
-        return this.currentState;
-    }
-};
 
 /**
  * player有限状态机
