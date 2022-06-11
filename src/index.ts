@@ -352,7 +352,7 @@ export class PlayerController {
 
     /**
      * 刷新控制器，更新视角和player位置
-     * @param delta 增量事件（ms）
+     * @param delta 增量时间
      */
     public update(delta: number) {
         this.playerFsm.update(delta, this.input);
@@ -368,7 +368,7 @@ export class PlayerController {
     /**
      * 看向目标
      * @param target 目标坐标
-     * @param deltaTime 间隔事件
+     * @param deltaTime 间隔时间
      */
     public aimFor(target: THREE.Vector3, deltaTime: number) {
         const deltaLookAt = new THREE.Vector3(0, 0, -1);

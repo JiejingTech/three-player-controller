@@ -6,7 +6,7 @@ function getOffset(el:Element) {
     const rect = el.getBoundingClientRect()
     const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-    
+
     return {
         top: rect.top + scrollTop,
         left: rect.left + scrollLeft
@@ -55,8 +55,8 @@ class NavTouchPad {
 
         // Aligning pad position:
         this.padElement.style.top = this.container.getBoundingClientRect().top
-                                    + this.container.getBoundingClientRect().height
-                                    - this.region.offsetHeight - bottomGap + 'px'
+        + this.container.getBoundingClientRect().height
+        - this.region.offsetHeight - bottomGap + 'px'
         this.padElement.style.left = leftGap + 'px'
 
         this.regionData.width = this.region.offsetWidth
@@ -130,7 +130,7 @@ class NavTouchPad {
         // event and data for handling camera movement
         let deltaX = this.regionData.centerX - newLeft
         let deltaY = this.regionData.centerY - newTop
-    
+
         // 将handler位置(x,y)正则化到 -2 和 2 之间
         deltaX = -2 + (2 + 2) * (deltaX - (-this.regionData.radius)) / (this.regionData.radius - (-this.regionData.radius))
         deltaY = -2 + (2 + 2) * (deltaY - (-this.regionData.radius)) / (this.regionData.radius - (-this.regionData.radius))
