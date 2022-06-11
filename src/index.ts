@@ -59,14 +59,14 @@ type RotateMode = 0 | 1;
  */
 class TouchInfo {
     constructor(
-		// 标识符
+        // 标识符
         readonly identifier: number,
-		// 触控开始位置
+        // 触控开始位置
         readonly startPos: THREE.Vector2,
         readonly lastPos: THREE.Vector2,
-		// 当前位置
+        // 当前位置
         readonly currPos: THREE.Vector2,
-		// 触控类型（NAV/ROTATE）
+        // 触控类型（NAV/ROTATE）
         readonly touchType: TouchType,
     ) {}
 }
@@ -177,9 +177,9 @@ export class PlayerController {
      * 代表player的「胶囊」对象，模拟和player发生碰撞时player的反应
      */
     private playerCollider: Capsule;
-	/**
-	 * player代理对象，使用内部camera实现
-	 */
+    /**
+     * player代理对象，使用内部camera实现
+     */
     private playerProxy = new THREE.Camera();
     /**
      * player的速度向量
@@ -209,46 +209,46 @@ export class PlayerController {
      * 控制器角色状态机
      */
     private playerFsm = new PlayerCtrlFSM(this);
-	/**
-   	 * 控制器角色
-   	 */
-	private playerActor?: THREE.Object3D;
-	/**
+    /**
+     * 控制器角色
+     */
+    private playerActor?: THREE.Object3D;
+    /**
      * 控制器角色动作处理器
-  	 */
-	private playerPoseMixer?: THREE.AnimationMixer;
-	/**
-	 * player角色加载器
-	 */
-	private playerActorLoader?: (playerFsm: PlayerCtrlFSM, onLoaded: (playerActor: THREE.Object3D) => THREE.AnimationMixer) => void;
-	/**
-	 * 第三人称跟随模式下，摄像机位置
-	 */
-	private playerChaserPosition = new THREE.Vector3();
-	/**
-	 * 第三人称跟随模式下，摄像机视角
-	 */
-	private playerChaserLookAt = new THREE.Vector3();
-	/**
-	 * 第三人称观察者模式下，摄像机偏移位置
-	 */
-	private playerObOffset = new THREE.Vector3(0, 3, 15);
-	/**
-	 * 控制模式
-	 */
+     */
+    private playerPoseMixer?: THREE.AnimationMixer;
+    /**
+     * player角色加载器
+     */
+    private playerActorLoader?: (playerFsm: PlayerCtrlFSM, onLoaded: (playerActor: THREE.Object3D) => THREE.AnimationMixer) => void;
+    /**
+     * 第三人称跟随模式下，摄像机位置
+     */
+    private playerChaserPosition = new THREE.Vector3();
+    /**
+     * 第三人称跟随模式下，摄像机视角
+     */
+    private playerChaserLookAt = new THREE.Vector3();
+    /**
+     * 第三人称观察者模式下，摄像机偏移位置
+     */
+    private playerObOffset = new THREE.Vector3(0, 3, 15);
+    /**
+     * 控制模式
+     */
     private controlMode: ControlMode = _CTRL_MODE_FPS;
-	/**
-	 * player跳跃状态
-	 */
+    /**
+     * player跳跃状态
+     */
     public isPlayerJumping = false;
-	/**
-	 * marker对象
-	 */
-	private marker?: THREE.Object3D;
-	/**
-	 * marker对象空间位置
-	 */
-	private markPos?: THREE.Vector3;
+    /**
+     * marker对象
+     */
+    private marker?: THREE.Object3D;
+    /**
+     * marker对象空间位置
+     */
+    private markPos?: THREE.Vector3;
 
     constructor(container: HTMLElement, scene: THREE.Scene, octree: Octree, settings?: PlayerNavSettings) {
         this.container = container;
@@ -257,7 +257,7 @@ export class PlayerController {
         this.worldOctree = octree;
         this.initFloor();
 
-		// 初始化player代理对象
+        // 初始化player代理对象
         this.playerProxy.rotation.order = 'YXZ';
         this.playerProxy.position.set(this.settings.bornPos.x, this.settings.viewHeight, this.settings.bornPos.y)
         this.playerProxy.rotateOnWorldAxis(_yAxis, this.settings.bornRotationY)
@@ -267,64 +267,64 @@ export class PlayerController {
         const playerHeadPos = new THREE.Vector3(this.settings.bornPos.x, this.settings.viewHeight, this.settings.bornPos.y)
         this.playerCollider = new Capsule(playerFootPos, playerHeadPos, this.settings.playerCapsuleRadius );
 
-		// 初始化输入对象
+        // 初始化输入对象
         this.input = new PlayerCtrlInput(this.container, this.settings);
-		// 启动player状态机
+        // 启动player状态机
         this.playerFsm.startup('idle');
 
         if (this.settings.markerModelPath.length > 0) {
-		    this.initMarker(this.settings.markerModelPath);
+            this.initMarker(this.settings.markerModelPath);
         }
 
-		this.initEventListeners();
+        this.initEventListeners();
     }
 
-	/**
-	 * 更新摄像头
-	 * @param camera 外部摄像头对象
-	 * @param deltaTime delta时间段
-	 */
+    /**
+     * 更新摄像头
+     * @param camera 外部摄像头对象
+     * @param deltaTime delta时间段
+     */
     public updateCamera(camera: THREE.Camera, deltaTime: number) {
-		switch (this.controlMode) {
-			case _CTRL_MODE_FPS:
-            	this.updateFpsCamera(camera, deltaTime);
-				break;
-			case _CTRL_MODE_CHASE:
-				this.updateChaseCamera(camera, deltaTime);
-				break;
-			case _CTRL_MODE_OB:
-				this.updateObCamera(camera, deltaTime);
-				break;
-		}
+        switch (this.controlMode) {
+            case _CTRL_MODE_FPS:
+                this.updateFpsCamera(camera, deltaTime);
+            break;
+            case _CTRL_MODE_CHASE:
+                this.updateChaseCamera(camera, deltaTime);
+            break;
+            case _CTRL_MODE_OB:
+                this.updateObCamera(camera, deltaTime);
+            break;
+        }
     }
 
-	/**
-	 * 更新第一人称摄像头
-	 * @param fpsCamera 第一人称摄像头
-	 * @param deltaTime delta时间段
-	 */
+    /**
+     * 更新第一人称摄像头
+     * @param fpsCamera 第一人称摄像头
+     * @param deltaTime delta时间段
+     */
     public updateFpsCamera(fpsCamera: THREE.Camera, deltaTime: number) {
         fpsCamera.position.copy(this.playerProxy.position);
         fpsCamera.lookAt(utils.getLookAtOfObject(this.playerProxy));
     }
 
-	/**
-	 * 更新第三人称摄像头
-	 * @param tpsCamera 第三人称摄像头
-	 * @param deltaTime  delta时间段
-	 * @returns 
-	 */
+    /**
+     * 更新第三人称摄像头
+     * @param tpsCamera 第三人称摄像头
+     * @param deltaTime  delta时间段
+     * @returns 
+     */
     public updateChaseCamera(tpsCamera: THREE.Camera, deltaTime: number) {
         if (!this.playerActor) {
             return;
         }
 
-		// 设置摄像头偏离位置
+        // 设置摄像头偏离位置
         const idealOffset = new THREE.Vector3(-5, 14, -15);
         idealOffset.applyQuaternion(this.playerActor.quaternion);
         idealOffset.add(this.playerActor.position);
 
-		// 设置摄像头视角
+        // 设置摄像头视角
         const idealLookat = new THREE.Vector3(0, 12, 10);
         idealLookat.applyQuaternion(this.playerActor.quaternion);
         idealLookat.add(this.playerActor.position);
@@ -338,17 +338,17 @@ export class PlayerController {
         tpsCamera.lookAt(this.playerChaserLookAt);
     }
 
-	public updateObCamera(obCamera: THREE.Camera, deltaTime: number) {
-		if (!this.playerActor) {
+    public updateObCamera(obCamera: THREE.Camera, deltaTime: number) {
+        if (!this.playerActor) {
             return;
         }	
 
-		const cameraPosition = this.playerObOffset.clone();
-		cameraPosition.add(this.playerCollider.end);
+        const cameraPosition = this.playerObOffset.clone();
+        cameraPosition.add(this.playerCollider.end);
 
-		obCamera.position.copy(cameraPosition);
-		obCamera.lookAt(this.playerCollider.end);
-	}
+        obCamera.position.copy(cameraPosition);
+        obCamera.lookAt(this.playerCollider.end);
+    }
 
     /**
      * 刷新控制器，更新视角和player位置
@@ -362,7 +362,7 @@ export class PlayerController {
         this.updatePlayer( delta);
         // 如果player坠落将其复位
         this.rebornPlayerIfFall();
-		this.updateMarker(delta);
+        this.updateMarker(delta);
     }
 
     /**
@@ -413,235 +413,235 @@ export class PlayerController {
         this.taskProcessors.set(task, processor);
     }
 
-	/**
-	 * 设置actor加载器
-	 * @param loader actor加载器
-	 */
-	public setActorLoader(loader: (playerFsm: PlayerCtrlFSM, actorSaver: (playerActor: THREE.Object3D) => THREE.AnimationMixer) => void) {
-		this.playerActorLoader = loader;
-	}
+    /**
+     * 设置actor加载器
+     * @param loader actor加载器
+     */
+    public setActorLoader(loader: (playerFsm: PlayerCtrlFSM, actorSaver: (playerActor: THREE.Object3D) => THREE.AnimationMixer) => void) {
+        this.playerActorLoader = loader;
+    }
 
-	/**
-	 * 切换控制模式
-	 */
-	private switchControlMode(targetMode: ControlMode = -1) {
-		const newMode = targetMode >= 0 ? targetMode: ((this.controlMode + 1) % 3 as ControlMode);
-		if (newMode === _CTRL_MODE_FPS) {
-			if (this.playerActor) {
-				this.playerActor.visible = false;
-			}
-			this.controlMode = newMode;
-		} else {
-			if (this.playerActor) {
-				this.playerActor.visible = true;
-				this.controlMode = newMode;
-			} else if (this.playerActorLoader) {
-				this.playerActorLoader(this.playerFsm, (actor) => {
-					this.playerActor = actor;
-					this.playerActor.visible = true;
-					this.playerActor.position.set(this.settings.bornPos.x, this.playerCollider.start.y - this.playerCollider.radius, this.settings.bornPos.y)
-					this.scene.add(this.playerActor);
-					this.playerPoseMixer = new THREE.AnimationMixer(this.playerActor);
-					this.controlMode = newMode;
-					return this.playerPoseMixer!;
-				})
-			}
-		} 
-	}
+    /**
+     * 切换控制模式
+     */
+    private switchControlMode(targetMode: ControlMode = -1) {
+        const newMode = targetMode >= 0 ? targetMode: ((this.controlMode + 1) % 3 as ControlMode);
+        if (newMode === _CTRL_MODE_FPS) {
+            if (this.playerActor) {
+                this.playerActor.visible = false;
+            }
+            this.controlMode = newMode;
+        } else {
+            if (this.playerActor) {
+                this.playerActor.visible = true;
+                this.controlMode = newMode;
+            } else if (this.playerActorLoader) {
+                this.playerActorLoader(this.playerFsm, (actor) => {
+                    this.playerActor = actor;
+                    this.playerActor.visible = true;
+                    this.playerActor.position.set(this.settings.bornPos.x, this.playerCollider.start.y - this.playerCollider.radius, this.settings.bornPos.y)
+                    this.scene.add(this.playerActor);
+                    this.playerPoseMixer = new THREE.AnimationMixer(this.playerActor);
+                    this.controlMode = newMode;
+                    return this.playerPoseMixer!;
+                })
+            }
+        } 
+    }
 
-	private unmark() {
-		if (this.marker) {
-			this.scene.remove(this.marker);
-			this.markPos = undefined;
-		}
-	}
+    private unmark() {
+        if (this.marker) {
+            this.scene.remove(this.marker);
+            this.markPos = undefined;
+        }
+    }
 
-	public mark(pos:THREE.Vector3) {
-		if (this.marker) {
-			this.unmark();
-			this.marker.position.copy(pos);
-			this.scene.add(this.marker);
-			this.markPos = pos;
-		}
-	}
+    public mark(pos:THREE.Vector3) {
+        if (this.marker) {
+            this.unmark();
+            this.marker.position.copy(pos);
+            this.scene.add(this.marker);
+            this.markPos = pos;
+        }
+    }
 
-	/**
-	 * 初始化事件监听器
-	 */
-	private initEventListeners() {
+    /**
+     * 初始化事件监听器
+     */
+    private initEventListeners() {
 
-		// 监听键盘按键，切换摄像头模式
-		document.addEventListener('keydown', (event: KeyboardEvent) => {
-			const targetModeCode = event.code.indexOf('Digit') === 0 ? Number(event.code.substring(5)) : -1; 
-			if (targetModeCode > 0) {
-				const targetMode = (targetModeCode - 1) as ControlMode;
-				this.switchControlMode(targetMode);
-			}
+        // 监听键盘按键，切换摄像头模式
+        document.addEventListener('keydown', (event: KeyboardEvent) => {
+            const targetModeCode = event.code.indexOf('Digit') === 0 ? Number(event.code.substring(5)) : -1; 
+            if (targetModeCode > 0) {
+                const targetMode = (targetModeCode - 1) as ControlMode;
+                this.switchControlMode(targetMode);
+            }
         });
 
-		// 监听控制器iput对象发来的长按事件，切换摄像哦图视角
-		document.addEventListener(EVENT_SWITCH_MODE, ((event: CustomEvent<THREE.Vector2>) => {
-			this.switchControlMode();
+        // 监听控制器iput对象发来的长按事件，切换摄像哦图视角
+        document.addEventListener(EVENT_SWITCH_MODE, ((event: CustomEvent<THREE.Vector2>) => {
+            this.switchControlMode();
         }) as EventListener);
-	}
+    }
 
-	/**
-	 * 初始化marker对象
-	 */
-	private initMarker(modelPath: string) {
+    /**
+     * 初始化marker对象
+     */
+    private initMarker(modelPath: string) {
         const loader = new GLTFLoader();
-		loader.load(modelPath, (gltf) => {
+        loader.load(modelPath, (gltf) => {
             gltf.scene.traverse(c => {
                 c.castShadow = false;
             });
             gltf.scene.scale.set(5,5,5)
-			this.marker = gltf.scene;
+            this.marker = gltf.scene;
         });
-	}
+    }
 
-	/**
-	 * 更新控制器
-	 * @param deltaTime delta时间段
-	 */
+    /**
+     * 更新控制器
+     * @param deltaTime delta时间段
+     */
     private updateControls( deltaTime: number ) {
         // 如果任务队列存在任务，用户输入被忽略，进入自动寻址
         if (this.taskQueue.length) {
             const [action, target] = this.taskQueue[0];
             const taskProcessFunc = this.taskProcessors.get(action); 
             if (taskProcessFunc) {
-				if (target.userData.needMove) {
-					const toMarkPos = new THREE.Vector3(target.userData.playerPos.x, this.settings.viewHeight, target.userData.playerPos.y);
-					if (!this.markPos || this.markPos != toMarkPos) {
-						this.mark(toMarkPos);
-					}
-				} else {
-					this.unmark();
-				}
+                if (target.userData.needMove) {
+                    const toMarkPos = new THREE.Vector3(target.userData.playerPos.x, this.settings.viewHeight, target.userData.playerPos.y);
+                    if (!this.markPos || this.markPos != toMarkPos) {
+                        this.mark(toMarkPos);
+                    }
+                } else {
+                    this.unmark();
+                }
                 taskProcessFunc(target, deltaTime);
             }
         } else {
             let inputNavVector = this.input.getNavVector();
             let inputRotateVector = this.input.getRotateVector();
-			switch (this.controlMode) {
-				case _CTRL_MODE_OB:
-					if (inputNavVector.length() > 0) {
-						let offsetAngle = inputNavVector.angle() - Math.PI / 2;
-						if (offsetAngle < 0) {
-							offsetAngle += 2 * Math.PI;
-						}
-						let offset = new THREE.Vector3(-this.playerObOffset.x, 0, -this.playerObOffset.z)
-						offset.applyAxisAngle(_yAxis, offsetAngle)
-						
-						// 添加一些过渡，让转身更加自然
-						let newLookAt = utils.getLookAtOfObject(this.playerProxy);
-						const t = 1.0 - Math.pow(0.1, deltaTime);
-						newLookAt.lerp(new THREE.Vector3(this.playerProxy.position.x + offset.x, this.settings.viewHeight, this.playerProxy.position.z + offset.z), t)
-						this.playerProxy.lookAt(newLookAt)
-					}
-	
-					if (inputRotateVector.length() > 0) {
-                        // 沿着y轴完成旋转
-                        this.playerObOffset.applyAxisAngle(_yAxis, -inputRotateVector.x);
-						let newOffset = this.playerObOffset.clone();
+            switch (this.controlMode) {
+                case _CTRL_MODE_OB:
+                    if (inputNavVector.length() > 0) {
+                    let offsetAngle = inputNavVector.angle() - Math.PI / 2;
+                    if (offsetAngle < 0) {
+                        offsetAngle += 2 * Math.PI;
+                    }
+                    let offset = new THREE.Vector3(-this.playerObOffset.x, 0, -this.playerObOffset.z)
+                    offset.applyAxisAngle(_yAxis, offsetAngle)
 
-                        // 沿着当前球面切线方向完成x轴旋转
-                        var rotateQuat = new THREE.Quaternion();
-                        let normalAxes = new THREE.Vector3(newOffset.x, 0, newOffset.z).normalize();
-                        normalAxes.cross(_yAxis);
-                        rotateQuat.setFromAxisAngle(normalAxes, -inputRotateVector.y);
-                        newOffset.applyQuaternion(rotateQuat);
-                        
-                        // 如果造成再X-Z平面反向，阻止转换
-                        if (Math.sign(newOffset.x) == Math.sign(this.playerObOffset.x) && Math.sign(newOffset.z) == Math.sign(this.playerObOffset.z)) {
-                            this.playerObOffset.applyQuaternion(rotateQuat);
-                        }
-					}
-					break;
-				case _CTRL_MODE_CHASE:
-					if (Math.abs(inputNavVector.x) > 0.3) {
-    	            	inputNavVector.y = 0;
-    	            	inputNavVector = inputNavVector.normalize();
-    	            	this.playerProxy.rotation.y -= inputNavVector.x / 50;
-					} else if (inputRotateVector.length() > 0) {
-						this.playerProxy.rotation.y -= inputRotateVector.x;
-						this.playerProxy.rotation.x -= inputRotateVector.y;
-					}
-					break;
-				case _CTRL_MODE_FPS:
-                	if (inputRotateVector.length() > 0) {
-                	    this.playerProxy.rotation.y -= inputRotateVector.x;
-                        let tmpProxy = this.playerProxy.clone();
-                        // 上下预留30度安全区域
-                        tmpProxy.rotation.x -= (inputRotateVector.y + Math.sign(inputRotateVector.y) * Math.PI / 6);
+                    // 添加一些过渡，让转身更加自然
+                    let newLookAt = utils.getLookAtOfObject(this.playerProxy);
+                    const t = 1.0 - Math.pow(0.1, deltaTime);
+                    newLookAt.lerp(new THREE.Vector3(this.playerProxy.position.x + offset.x, this.settings.viewHeight, this.playerProxy.position.z + offset.z), t)
+                    this.playerProxy.lookAt(newLookAt)
+                }
 
-                        const oldLookAt = utils.getLookAtOfObject(this.playerProxy);
-                        const oldLookAtOffset = new THREE.Vector3(oldLookAt.x - this.playerProxy.position.x, oldLookAt.y - this.playerProxy.position.y, oldLookAt.z - this.playerProxy.position.z).normalize();
-                        const newLookAt = utils.getLookAtOfObject(tmpProxy);
-                        const newLookAtOffset = new THREE.Vector3(newLookAt.x - this.playerProxy.position.x, newLookAt.y - this.playerProxy.position.y, newLookAt.z - this.playerProxy.position.z).normalize();
-                        if (Math.sign(newLookAtOffset.x) == Math.sign(oldLookAtOffset.x) && Math.sign(newLookAtOffset.z) == Math.sign(oldLookAtOffset.z)) {
-                	        this.playerProxy.rotation.x -= inputRotateVector.y;
-                        }
-                	}
-					break;
-			}
+                if (inputRotateVector.length() > 0) {
+                    // 沿着y轴完成旋转
+                    this.playerObOffset.applyAxisAngle(_yAxis, -inputRotateVector.x);
+                    let newOffset = this.playerObOffset.clone();
+
+                    // 沿着当前球面切线方向完成x轴旋转
+                    var rotateQuat = new THREE.Quaternion();
+                    let normalAxes = new THREE.Vector3(newOffset.x, 0, newOffset.z).normalize();
+                    normalAxes.cross(_yAxis);
+                    rotateQuat.setFromAxisAngle(normalAxes, -inputRotateVector.y);
+                    newOffset.applyQuaternion(rotateQuat);
+
+                    // 如果造成再X-Z平面反向，阻止转换
+                    if (Math.sign(newOffset.x) == Math.sign(this.playerObOffset.x) && Math.sign(newOffset.z) == Math.sign(this.playerObOffset.z)) {
+                        this.playerObOffset.applyQuaternion(rotateQuat);
+                    }
+                }
+                break;
+                case _CTRL_MODE_CHASE:
+                    if (Math.abs(inputNavVector.x) > 0.3) {
+                    inputNavVector.y = 0;
+                    inputNavVector = inputNavVector.normalize();
+                    this.playerProxy.rotation.y -= inputNavVector.x / 50;
+                } else if (inputRotateVector.length() > 0) {
+                    this.playerProxy.rotation.y -= inputRotateVector.x;
+                    this.playerProxy.rotation.x -= inputRotateVector.y;
+                }
+                break;
+                case _CTRL_MODE_FPS:
+                    if (inputRotateVector.length() > 0) {
+                    this.playerProxy.rotation.y -= inputRotateVector.x;
+                    let tmpProxy = this.playerProxy.clone();
+                    // 上下预留30度安全区域
+                    tmpProxy.rotation.x -= (inputRotateVector.y + Math.sign(inputRotateVector.y) * Math.PI / 6);
+
+                    const oldLookAt = utils.getLookAtOfObject(this.playerProxy);
+                    const oldLookAtOffset = new THREE.Vector3(oldLookAt.x - this.playerProxy.position.x, oldLookAt.y - this.playerProxy.position.y, oldLookAt.z - this.playerProxy.position.z).normalize();
+                    const newLookAt = utils.getLookAtOfObject(tmpProxy);
+                    const newLookAtOffset = new THREE.Vector3(newLookAt.x - this.playerProxy.position.x, newLookAt.y - this.playerProxy.position.y, newLookAt.z - this.playerProxy.position.z).normalize();
+                    if (Math.sign(newLookAtOffset.x) == Math.sign(oldLookAtOffset.x) && Math.sign(newLookAtOffset.z) == Math.sign(oldLookAtOffset.z)) {
+                        this.playerProxy.rotation.x -= inputRotateVector.y;
+                    }
+                }
+                break;
+            }
         }
     }
 
-	/**
-	 * 更新player对象
-	 * @param deltaTime delta时间段
-	 */
+    /**
+     * 更新player对象
+     * @param deltaTime delta时间段
+     */
     private updatePlayer( deltaTime: number ) {
 
-		// 获取输入的nav向量
+        // 获取输入的nav向量
         let inputNavVector = this.input.getNavVector();
 
-		// 将nav向量转化为player速度向量
+        // 将nav向量转化为player速度向量
         if ( inputNavVector.length() > 0) {
-			// 计算该delta时间段内速度增量
-			// 考虑地面移动/跳跃；行走/奔跑时的不同参数
-  	    	const speedDelta = deltaTime * ( this.playerOnFloor ? this.settings.moveAcceleration : this.settings.jumpAcceleration ) * (this.playerFsm.state === 'run' ? 2: 1);
-		
-			if (this.controlMode !== _CTRL_MODE_OB) {
-				// 如果是第三人称模式，忽略nav向量在X轴分量
-				// TODO：以后如果支持「元神」模式的跟踪摄像头，这个限制可以放开
-				if (this.controlMode === _CTRL_MODE_CHASE) {
-					inputNavVector.x = 0
-					inputNavVector = inputNavVector.normalize();
-				}
-            	// 将输入Nav向量转化为fps摄像头面向方向的分量
-            	this.playerVelocity.add(utils.getForwardVector(this.playerProxy).multiplyScalar( inputNavVector.y * speedDelta ) );
-            	this.playerVelocity.add(utils.getSideVector(this.playerProxy).multiplyScalar( inputNavVector.x * speedDelta ) );
-			} else {
-				if (inputNavVector.length() > 0) {
-					let navAngle = new THREE.Vector2(-this.playerObOffset.x, -this.playerObOffset.z).angle() - Math.PI / 2;
-					if (navAngle < 0) {
-						navAngle += 2 * Math.PI;
-					}
-					let velocityDeltaVector = new THREE.Vector3(-inputNavVector.x, 0, -inputNavVector.y);
-					velocityDeltaVector.applyAxisAngle(_yAxis, navAngle);
-    	        	this.playerVelocity.add(new THREE.Vector3(velocityDeltaVector.x * speedDelta, 0, -velocityDeltaVector.z * speedDelta));
-				}
-			}
+            // 计算该delta时间段内速度增量
+            // 考虑地面移动/跳跃；行走/奔跑时的不同参数
+            const speedDelta = deltaTime * ( this.playerOnFloor ? this.settings.moveAcceleration : this.settings.jumpAcceleration ) * (this.playerFsm.state === 'run' ? 2: 1);
+
+            if (this.controlMode !== _CTRL_MODE_OB) {
+                // 如果是第三人称模式，忽略nav向量在X轴分量
+                // TODO：以后如果支持「元神」模式的跟踪摄像头，这个限制可以放开
+                if (this.controlMode === _CTRL_MODE_CHASE) {
+                    inputNavVector.x = 0
+                    inputNavVector = inputNavVector.normalize();
+                }
+                // 将输入Nav向量转化为fps摄像头面向方向的分量
+                this.playerVelocity.add(utils.getForwardVector(this.playerProxy).multiplyScalar( inputNavVector.y * speedDelta ) );
+                this.playerVelocity.add(utils.getSideVector(this.playerProxy).multiplyScalar( inputNavVector.x * speedDelta ) );
+            } else {
+                if (inputNavVector.length() > 0) {
+                    let navAngle = new THREE.Vector2(-this.playerObOffset.x, -this.playerObOffset.z).angle() - Math.PI / 2;
+                    if (navAngle < 0) {
+                        navAngle += 2 * Math.PI;
+                    }
+                    let velocityDeltaVector = new THREE.Vector3(-inputNavVector.x, 0, -inputNavVector.y);
+                    velocityDeltaVector.applyAxisAngle(_yAxis, navAngle);
+                    this.playerVelocity.add(new THREE.Vector3(velocityDeltaVector.x * speedDelta, 0, -velocityDeltaVector.z * speedDelta));
+                }
+            }
         }
 
-		// 获取输入中的player跳跃flag，true标识此刻player开始跳跃
+        // 获取输入中的player跳跃flag，true标识此刻player开始跳跃
         let playerToJump = this.input.getJumpFlag();
-		// 如果player在地板上
+        // 如果player在地板上
         if ( this.playerOnFloor) {
-			// 如果此时player还不处于跳跃状态
+            // 如果此时player还不处于跳跃状态
             if (playerToJump && !this.isPlayerJumping) {
                 console.log('player jump at ', JSON.stringify(this.playerProxy.position));
                 this.playerVelocity.y = this.settings.jumpUpVelocity;
                 this.isPlayerJumping = true;
             }
-			// 否则表示player在跳跃后已经接触地面，充值跳跃状态，使动作展示正常
+            // 否则表示player在跳跃后已经接触地面，充值跳跃状态，使动作展示正常
             else if (this.isPlayerJumping) {
                 this.isPlayerJumping = false;
             }
         }
 
-		// 处理空中空气阻力和重力加速度对player位置和速度的影响
+        // 处理空中空气阻力和重力加速度对player位置和速度的影响
         let damping = Math.exp( - 4 * deltaTime ) - 1;
         if ( ! this.playerOnFloor ) {
             this.playerVelocity.y -= this.settings.gravity * deltaTime;
@@ -650,24 +650,24 @@ export class PlayerController {
         } 
         this.playerVelocity.addScaledVector( this.playerVelocity, damping );
 
-		// 处理player碰撞检测
+        // 处理player碰撞检测
         const deltaPosition = this.playerVelocity.clone().multiplyScalar( deltaTime );
         this.playerCollider.translate( deltaPosition );
         this.playerCollisions();
 
-		// 更新player代理对象位置
+        // 更新player代理对象位置
         this.playerProxy.position.copy( this.playerCollider.end );
 
-		// 更新player角色信息
-		this.updateActor(deltaTime);
+        // 更新player角色信息
+        this.updateActor(deltaTime);
     }
 
-	/**
-	 * 更新player角色动作动画
-	 * @param delta delta时间段
-	 */
-	private updateActor(delta: number) {
-		if (this.playerActor && this.playerActor.visible) {
+    /**
+     * 更新player角色动作动画
+     * @param delta delta时间段
+     */
+    private updateActor(delta: number) {
+        if (this.playerActor && this.playerActor.visible) {
             this.playerActor.position.copy(this.playerProxy.position)
 
             const floorHeight = this.playerCollider.start.y - this.playerCollider.radius;
@@ -681,24 +681,24 @@ export class PlayerController {
                 this.playerPoseMixer.update(delta);
             }
         }
-	}
+    }
 
-	/**
-	 * 更新marker对象
-	 * @param deltaTime delta时间段
-	 */
-	private updateMarker(deltaTime: number) {
-		if (this.marker && this.markPos) {
-			this.marker.rotateOnAxis(_yAxis, 0.1);
-			this.marker.position.y = this.markPos.y + Math.sin(new Date().getTime() / 100);
-		}
-	}
+    /**
+     * 更新marker对象
+     * @param deltaTime delta时间段
+     */
+    private updateMarker(deltaTime: number) {
+        if (this.marker && this.markPos) {
+            this.marker.rotateOnAxis(_yAxis, 0.1);
+            this.marker.position.y = this.markPos.y + Math.sin(new Date().getTime() / 100);
+        }
+    }
 
-	/**
-	 * 处理player对象碰撞
-	 */
+    /**
+     * 处理player对象碰撞
+     */
     private playerCollisions() {
-		// 如果不开启碰撞检测，只使用地板，不加载任何其他空间对象进行碰撞检测
+        // 如果不开启碰撞检测，只使用地板，不加载任何其他空间对象进行碰撞检测
         const checkOctree = this.enableCollision ? this.worldOctree : this.floorOctree;
         const result = checkOctree.capsuleIntersect( this.playerCollider );
         this.playerOnFloor = result ? result.normal.y > 0 : false
@@ -806,7 +806,7 @@ class PlayerCtrlInput {
     /**
      * 控制模式切换定时器
      */
-	private switchModeTimer?: number;
+    private switchModeTimer?: number;
 
     constructor(container: HTMLElement, settings: PlayerNavSettings) {
         this.settings = settings;
@@ -822,7 +822,7 @@ class PlayerCtrlInput {
 
         this.addEventListeners();
     }
-    
+
     /**
      * @returns 获取输入的原始Nav向量
      */
@@ -862,10 +862,10 @@ class PlayerCtrlInput {
             let resVector = new THREE.Vector2();
             if (this.settings.rotateMode == 0) {
                 resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16,
-                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 128));
+                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 128));
             } else {
                 resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI,
-                    this.mouseMoveVector.y / window.innerHeight * Math.PI / 2));
+                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 2));
             }
             this.mouseMoveVector.copy(_STAY_VECTOR);
             return resVector;
@@ -891,10 +891,10 @@ class PlayerCtrlInput {
         if (this.onMobile) {
             const navTouchId = this.activeToucheTypes.get('NAV');
             const navTouch = navTouchId !== undefined ? this.activeTouches.get(navTouchId): undefined;
-			if (!navTouch) {
-				return false;
-			}
-			return new THREE.Vector2(navTouch.currPos.x, navTouch.currPos.y).distanceTo(this.navTouchCenter!) > 45;
+            if (!navTouch) {
+                return false;
+            }
+            return new THREE.Vector2(navTouch.currPos.x, navTouch.currPos.y).distanceTo(this.navTouchCenter!) > 45;
         } else {
             return this.activetKeys.has('ShiftLeft') || this.activetKeys.has('ShiftRight');
         }
@@ -1074,10 +1074,10 @@ class PlayerCtrlInput {
             this.deregisterTouch(touches[i])
         }
     }
-	
-	/**
-	 * 处理窗口重置大小
-	 */
+
+    /**
+     * 处理窗口重置大小
+     */
     private handleWindowResize() {
         const [navTouchCenter, touchSize, _] = this.evalNavTouchLayout();
         this.navTouchCenter = navTouchCenter;
@@ -1087,10 +1087,10 @@ class PlayerCtrlInput {
             this.navTouchPad.handleWindowResize();
         }
     }
-	/**
-	 * 注册触控对象
-	 * @param touch 触控对象
-	 */
+    /**
+     * 注册触控对象
+     * @param touch 触控对象
+     */
     private registerTouch(touch: Touch) {
         const touchPos = new THREE.Vector2(touch.pageX, touch.pageY);
         if (this.activeTouches.size >= 2) {
@@ -1107,28 +1107,28 @@ class PlayerCtrlInput {
         if ('NAV' === touchType) {
             this.sendTouchEvent(_NAV_TOUCH_DOWN, touchPos);
 
-			if (touchPos.distanceTo(this.navTouchCenter!) <= this.settings.touchErrorRadius) {
-				if (this.switchModeTimer) {
-					clearTimeout(this.switchModeTimer);
-				}
-				this.switchModeTimer = setTimeout(() => {
-					let touchEvent = new CustomEvent(EVENT_SWITCH_MODE, {
-						bubbles: false,
-						detail: {},
-					})
-					document.dispatchEvent(touchEvent)
-				}, 2000);
-			}
+            if (touchPos.distanceTo(this.navTouchCenter!) <= this.settings.touchErrorRadius) {
+                if (this.switchModeTimer) {
+                    clearTimeout(this.switchModeTimer);
+                }
+                this.switchModeTimer = setTimeout(() => {
+                    let touchEvent = new CustomEvent(EVENT_SWITCH_MODE, {
+                        bubbles: false,
+                        detail: {},
+                    })
+                    document.dispatchEvent(touchEvent)
+                }, 2000);
+            }
         }
 
         this.activeTouches.set(toAddTouch.identifier, toAddTouch);
         this.activeToucheTypes.set(touchType, toAddTouch.identifier);
     }
 
-	/**
-	 * 更新触控信息
-	 * @param touch 触控对象
-	 */
+    /**
+     * 更新触控信息
+     * @param touch 触控对象
+     */
     private updateTouch(touch: Touch) {
         const touchPos = new THREE.Vector2(touch.pageX, touch.pageY);
         const origTouch = this.activeTouches.get(touch.identifier);
@@ -1138,30 +1138,30 @@ class PlayerCtrlInput {
             if ('NAV' === origTouch.touchType) {
                 this.sendTouchEvent(_NAV_TOUCH_DOWN, touchPos);
 
-				if (touchPos.distanceTo(this.navTouchCenter!) > this.settings.touchErrorRadius) {
-					if (this.switchModeTimer) {
-						clearTimeout(this.switchModeTimer);
-					}
-				}
+                if (touchPos.distanceTo(this.navTouchCenter!) > this.settings.touchErrorRadius) {
+                    if (this.switchModeTimer) {
+                        clearTimeout(this.switchModeTimer);
+                    }
+                }
             }
 
             this.activeTouches.set(touch.identifier, newTouch)
         }
     }
 
-	/**
-	 * 注销触控信息
-	 * @param touch 触控对象
-	 */
+    /**
+     * 注销触控信息
+     * @param touch 触控对象
+     */
     private deregisterTouch(touch: Touch) {
         const origTouch = this.activeTouches.get(touch.identifier);
         if (origTouch) {
             if ('NAV' === origTouch.touchType) {
                 this.sendTouchEvent(_NAV_TOUCH_UP);
 
-				if (this.switchModeTimer) {
-					clearTimeout(this.switchModeTimer);
-				}
+                if (this.switchModeTimer) {
+                    clearTimeout(this.switchModeTimer);
+                }
             }
             this.activeTouches.delete(touch.identifier);
             this.activeToucheTypes.delete(origTouch.touchType);
@@ -1188,10 +1188,10 @@ class PlayerCtrlInput {
         document.dispatchEvent(touchEvent)
     }
 
-	/**
-	 * 发布屏幕点击事件
-	 * @param selectPos 点击位置
-	 */
+    /**
+     * 发布屏幕点击事件
+     * @param selectPos 点击位置
+     */
     private sendHitOnViewEvent(selectPos: THREE.Vector2) {
         let touchEvent = new CustomEvent('hitOnView', {
             bubbles: false,
@@ -1245,13 +1245,13 @@ export class PlayerCtrlFSM extends FiniteStateMachine {
     }
 
     private init() {
-		// 初始化内建状态
+        // 初始化内建状态
         this.addState('idle');
         this.addState('walk');
         this.addState('run');
         this.addState('jump');
 
-		// 添加行走、跑动状态转移
+        // 添加行走、跑动状态转移
         this.addTransition('idle', 'walk', (deltaTime: number, input: PlayerCtrlInput) => {
             return input.getNavVector().length() > 0 || this.hasTaskNeedMove();
         })
@@ -1265,7 +1265,7 @@ export class PlayerCtrlFSM extends FiniteStateMachine {
             return !input.getRunFlag() && !this.hasTaskNeedRun();
         }) 
 
-		// 添加跳跃状态转移
+        // 添加跳跃状态转移
         this.addTransition('idle', 'jump', (deltaTime: number, input: PlayerCtrlInput) => {
             return input.getJumpFlag();
         })
@@ -1281,17 +1281,17 @@ export class PlayerCtrlFSM extends FiniteStateMachine {
 
     }
 
-	/**
-	 * @returns 是否存在需要移动的任务
-	 */
-	private hasTaskNeedMove() {
-		return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needMove;	
-	}
+    /**
+     * @returns 是否存在需要移动的任务
+     */
+    private hasTaskNeedMove() {
+        return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needMove;	
+    }
 
-	/**
-	 * @returns 是否存在需要跑步移动的任务
-	 */
-	private hasTaskNeedRun() {
-		return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needRun;	
-	}
+    /**
+     * @returns 是否存在需要跑步移动的任务
+     */
+    private hasTaskNeedRun() {
+        return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needRun;	
+    }
 }
