@@ -47,7 +47,8 @@ class NavTouchPad {
 
         const [padCenter, _, padSize] = this.padSizeFunc();
         const leftGap = padCenter.x - padSize / 2;
-        const bottomGap = window.innerHeight - padCenter.y - padSize / 2;
+        // 这里调整了下，让pad渲染位置正常
+        const bottomGap = this.container.clientHeight - padCenter.y - padSize / 2;
 
         this.region.style.setProperty('width', padSize + 'px');
         this.region.style.setProperty('height', padSize + 'px');
