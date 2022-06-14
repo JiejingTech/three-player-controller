@@ -127,14 +127,22 @@ export class PlayerNavSettings {
      * 是否按住鼠标进行视角旋转，-1标识不需要
      */
     public holdMouseKeyToRotate = _MOUSE_RIGHT_KEY;
-    // /**
-    //  * 鼠标移动放大系数
-    //  */
-    // public mouseMoveScaleVector = new THREE.Vector2(50, 1000);
-    // /**
-    //  * 触控移动放大系数
-    //  */
-    // public touchMoveScaleVector = new THREE.Vector2(8000, 8000);
+    /**
+     * 视角移动在Y轴上下预留的限制角度
+     */
+    public viewAngleYLimit = Math.PI / 3;
+    /**
+     * 视角移动是否反向
+     */
+    public viewRotateInvert = false;
+    /**
+     * 视角移动横向灵敏系数
+     */
+    public viewRotateRateX = 1.0;
+    /**
+     * 视角移动纵向灵敏系数
+     */
+    public viewRotateRateY = 1.0;
     /**
      * 事件重复timeout（毫秒）
      */
@@ -572,7 +580,7 @@ export class PlayerController {
                     this.playerProxy.rotation.y -= inputRotateVector.x;
                     let tmpProxy = this.playerProxy.clone();
                     // 上下预留30度安全区域
-                    tmpProxy.rotation.x -= (inputRotateVector.y + Math.sign(inputRotateVector.y) * Math.PI / 6);
+                    tmpProxy.rotation.x -= (inputRotateVector.y + Math.sign(inputRotateVector.y) * this.settings.viewAngleYLimit);
 
                     const oldLookAt = utils.getLookAtOfObject(this.playerProxy);
                     const oldLookAtOffset = new THREE.Vector3(oldLookAt.x - this.playerProxy.position.x, oldLookAt.y - this.playerProxy.position.y, oldLookAt.z - this.playerProxy.position.z).normalize();
@@ -852,20 +860,24 @@ class PlayerCtrlInput {
             const rotateTouch = rotateVectorId !== undefined ? this.activeTouches.get(rotateVectorId): undefined;
             if (this.settings.rotateMode == 0) {
                 return rotateTouch ? new THREE.Vector2(
-                    (rotateTouch.currPos.x - rotateTouch.startPos.x) / window.innerWidth * Math.PI / 16,
-                    (rotateTouch.currPos.y - rotateTouch.startPos.y) / window.innerHeight * Math.PI / 128): _STAY_VECTOR;
+                    (rotateTouch.currPos.x - rotateTouch.startPos.x) / window.innerWidth * Math.PI / 16 * this.settings.viewRotateRateX,
+                    (rotateTouch.currPos.y - rotateTouch.startPos.y) / window.innerHeight * Math.PI / 128 * this.settings.viewRotateRateY)
+                    .multiplyScalar(this.settings.viewRotateInvert ? -1: 1): _STAY_VECTOR;
             }
             return rotateTouch ? new THREE.Vector2(
-                (rotateTouch.currPos.x - rotateTouch.lastPos.x) / window.innerWidth * 4 * Math.PI,
-                (rotateTouch.currPos.y - rotateTouch.lastPos.y) / window.innerHeight * Math.PI / 2): _STAY_VECTOR;
+                (rotateTouch.currPos.x - rotateTouch.lastPos.x) / window.innerWidth * 4 * Math.PI * this.settings.viewRotateRateX,
+                (rotateTouch.currPos.y - rotateTouch.lastPos.y) / window.innerHeight * Math.PI / 2 * this.settings.viewRotateRateY)
+                .multiplyScalar(this.settings.viewRotateInvert ? -1: 1): _STAY_VECTOR;
         } else {
             let resVector = new THREE.Vector2();
             if (this.settings.rotateMode == 0) {
-                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16,
-                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 128));
+                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * Math.PI / 16 * this.settings.viewRotateRateX,
+                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 128 * this.settings.viewRotateRateY)
+                                                 .multiplyScalar(this.settings.viewRotateInvert ? -1: 1));
             } else {
-                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI,
-                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 2));
+                resVector.copy(new THREE.Vector2(this.mouseMoveVector.x / window.innerWidth * 4 * Math.PI * this.settings.viewRotateRateX,
+                                                 this.mouseMoveVector.y / window.innerHeight * Math.PI / 2 * this.settings.viewRotateRateY)
+                                                 .multiplyScalar(this.settings.viewRotateInvert ? -1: 1));
             }
             this.mouseMoveVector.copy(_STAY_VECTOR);
             return resVector;
