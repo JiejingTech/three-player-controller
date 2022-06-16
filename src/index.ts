@@ -29,6 +29,8 @@ const _MOUSE_RIGHT_KEY = 2;
  */
 const _STAY_VECTOR = new THREE.Vector2(0, 0);
 
+const _STAY_VELOCITY = 0.000001;
+
 /**
  * 世界坐标轴
  */
@@ -58,7 +60,7 @@ type RotateMode = 0 | 1;
  * 缓存生效的触控信息
  */
 class TouchInfo {
-    constructor(
+    constructor (
         // 标识符
         readonly identifier: number,
         // 触控开始位置
@@ -68,6 +70,30 @@ class TouchInfo {
         readonly currPos: THREE.Vector2,
         // 触控类型（NAV/ROTATE）
         readonly touchType: TouchType,
+    ) {}
+}
+
+/**
+ * 任务对象
+ */
+class Task {
+    constructor (
+        /**
+         * 任务目标对象
+         */
+        readonly target: THREE.Object3D,
+        /**
+         * 任务Action函数
+         */
+        readonly taskAction: (target: THREE.Object3D, taskContext: any, deltaTime: number) => boolean,
+        /**
+         * 任务位置提取函数，表示player要到达什么位置才能进行任务action
+         */
+        readonly taskPosEval?: (target: THREE.Object3D) => THREE.Vector3,
+        /**
+         * 任务的运行时上下文
+         */
+        readonly taskContext:any = {},
     ) {}
 }
 
@@ -200,7 +226,7 @@ export class PlayerController {
     /**
      * 保存自动定位的坐标路径
      */
-    private taskQueue = new Array<[string, THREE.Object3D]>();
+    private taskQueue = new Array<Task>();
     /**
      * 任务处理器，由用户提供
      */
@@ -287,6 +313,12 @@ export class PlayerController {
         this.initEventListeners();
     }
 
+    get currentTask() {
+        if (this.taskQueue.length > 0) {
+            return this.taskQueue[0];
+        }
+    }
+
     /**
      * 更新摄像头
      * @param camera 外部摄像头对象
@@ -346,6 +378,12 @@ export class PlayerController {
         tpsCamera.lookAt(this.playerChaserLookAt);
     }
 
+    /**
+     * 更新观察者摄像头
+     * @param obCamera 观察者摄像头
+     * @param deltaTime delta时间段
+     * @returns 
+     */
     public updateObCamera(obCamera: THREE.Camera, deltaTime: number) {
         if (!this.playerActor) {
             return;
@@ -387,38 +425,15 @@ export class PlayerController {
     }
 
     /**
-     * 向目标位置靠近
-     * @param target 目标坐标 
-     * @param deltaTime 间隔时间
-     * @returns 移动前距离目位置距离
+     * 添加任务
+     * @param target 任务目标
+     * @param taskAction  任务action函数
+     * @param taskPosEval 任务位置提取函数
+     * @param taskContext 任务运行时上下文
      */
-    public moveTowards(target: THREE.Vector3, deltaTime: number): number {
-        const speedDelta = deltaTime * ( this.playerOnFloor ? this.settings.moveAcceleration : this.settings.jumpAcceleration ) *  (this.playerFsm.state === 'run' ? 2: 1);
-        const cameraPlanePos = new THREE.Vector2(this.playerProxy.position.x, this.playerProxy.position.z);
-        const targetPlanePos = new THREE.Vector2(target.x, target.z);
-        const planeDistance = cameraPlanePos.distanceTo(targetPlanePos);
-
-        const moveVector = utils.getDirectionVectorByLookAt(this.playerProxy, target);	
-        if ( moveVector.y != 0 || moveVector.x != 0) {
-            this.playerVelocity.add( moveVector.multiplyScalar(speedDelta))
-        }
-        return planeDistance;
-    }
-
-    /**
-     * 用于外部控制任务
-     */
-    get tasks() {
-        return this.taskQueue;
-    }
-
-    /**
-     * 注册任务处理器
-     * @param task 任务类型
-     * @param processor 任务处理器 
-     */
-    public registerTaskProcessor(task: string, processor: (target: THREE.Object3D, deltaTime: number) => void) {
-        this.taskProcessors.set(task, processor);
+    public addTask(target: THREE.Object3D, taskAction: (target: THREE.Object3D, taskContext: any, deltaTime: number) => boolean, taskPosEval?: (target: THREE.Object3D) => THREE.Vector3, taskContext: any = {}) {
+        const task = new Task(target, taskAction, taskPosEval, taskContext)
+        this.taskQueue.push(task);
     }
 
     /**
@@ -457,6 +472,9 @@ export class PlayerController {
         } 
     }
 
+    /**
+     * 删除标记
+     */
     private unmark() {
         if (this.marker) {
             this.scene.remove(this.marker);
@@ -464,6 +482,10 @@ export class PlayerController {
         }
     }
 
+    /**
+     * 创建标记
+     * @param pos 标记位置
+     */
     public mark(pos:THREE.Vector3) {
         if (this.marker) {
             this.unmark();
@@ -514,18 +536,15 @@ export class PlayerController {
     private updateControls( deltaTime: number ) {
         // 如果任务队列存在任务，用户输入被忽略，进入自动寻址
         if (this.taskQueue.length) {
-            const [action, target] = this.taskQueue[0];
-            const taskProcessFunc = this.taskProcessors.get(action); 
-            if (taskProcessFunc) {
-                if (target.userData.needMove) {
-                    const toMarkPos = new THREE.Vector3(target.userData.playerPos.x, this.settings.viewHeight, target.userData.playerPos.y);
-                    if (!this.markPos || this.markPos != toMarkPos) {
-                        this.mark(toMarkPos);
-                    }
-                } else {
-                    this.unmark();
+            const task = this.taskQueue[0];
+            if (!task.taskContext.inPosition) {
+                const targetPos = task.target.userData.lookAt;
+                const taskPos = task.taskPosEval ? task.taskPosEval(task.target): targetPos;
+                if (!this.markPos || this.markPos != taskPos) {
+                    this.mark(taskPos);
                 }
-                taskProcessFunc(target, deltaTime);
+            } else {
+                this.unmark();
             }
         } else {
             let inputNavVector = this.input.getNavVector();
@@ -601,14 +620,61 @@ export class PlayerController {
      */
     private updatePlayer( deltaTime: number ) {
 
+        // 按照60帧率计算出的基准行走速度
+        const stdVelocity = this.settings.moveAcceleration / 60 / ( 1 - Math.exp( - 4 / 60 ));
+        // 备份当前在平面上的速度响亮
+        const currVelocityVector = new THREE.Vector3(this.playerVelocity.x, 0, this.playerVelocity.z);
+        const speedDelta = deltaTime * ( this.playerOnFloor ? this.settings.moveAcceleration : this.settings.jumpAcceleration ) * (this.playerFsm.state === 'run' ? 2: 1);
+        const stdDamping = Math.exp( - 4 * deltaTime ) - 1;
+
         // 获取输入的nav向量
         let inputNavVector = this.input.getNavVector();
+        let targetMoveVector = new THREE.Vector3();
 
+        // 如果有任务驱动目的地
+        if (this.taskQueue.length > 0) {
+            const task = this.taskQueue[0];
+            const targetPos = task.target.userData.lookAt;
+            const taskPos = task.taskPosEval ? task.taskPosEval(task.target): targetPos;
+            const taskInPosition = task.taskContext.inPosition;
+
+            // 刹车（停止提供加速度）到停止所需时间（帧数）
+            const brakingTtl = this.playerVelocity.length() / Math.abs(stdVelocity * stdDamping)
+            // 应该开始刹车（停止提供加速度）的安全距离
+            const brakingDistance = this.playerVelocity.length() / 2 * brakingTtl / 60;
+
+            // 计算当前距离任务目的地的距离
+            const cameraPlanePos = new THREE.Vector2(this.playerProxy.position.x, this.playerProxy.position.z);
+            const targetPlanePos = new THREE.Vector2(taskPos.x, taskPos.z);
+            const planeDistance = cameraPlanePos.distanceTo(targetPlanePos);
+
+            this.aimFor(targetPos, deltaTime);
+
+            // 需要移动到任务为止才能做任务
+            if ( !taskInPosition && planeDistance > brakingDistance) {
+                targetMoveVector = utils.getDirectionVectorByLookAt(this.playerProxy, taskPos);
+                this.playerVelocity.add( targetMoveVector.multiplyScalar(speedDelta))
+                console.log('task: going to the task position: ' + JSON.stringify(taskPos));
+            } else {
+                const planeVelocity = new THREE.Vector2(this.playerVelocity.x, this.playerVelocity.z)
+                if (!taskInPosition) {
+                    console.log('task: arrived at the task position: ' + JSON.stringify(taskPos));
+                    task.taskContext.inPosition = true;
+                }
+                else if (planeVelocity.length() < _STAY_VELOCITY ) {
+                    console.log("task: action started")
+                    let taskDone = task.taskAction(task.target, task.taskContext, deltaTime);
+                    if (taskDone) {
+                        console.log("task: action done")
+                        this.taskQueue.shift();
+                    }
+                }
+            } 
+        }
         // 将nav向量转化为player速度向量
-        if ( inputNavVector.length() > 0) {
+        else if ( inputNavVector.length() > 0) {
             // 计算该delta时间段内速度增量
             // 考虑地面移动/跳跃；行走/奔跑时的不同参数
-            const speedDelta = deltaTime * ( this.playerOnFloor ? this.settings.moveAcceleration : this.settings.jumpAcceleration ) * (this.playerFsm.state === 'run' ? 2: 1);
 
             if (this.controlMode !== _CTRL_MODE_OB) {
                 // 如果是第三人称模式，忽略nav向量在X轴分量
@@ -633,6 +699,27 @@ export class PlayerController {
             }
         }
 
+        let damping = stdDamping;
+        // 处理空中空气阻力和重力加速度对player位置和速度的影响
+        if ( ! this.playerOnFloor ) {
+            this.playerVelocity.y -= this.settings.gravity * deltaTime;
+            // small air resistance
+            damping *= 0.1;
+        }
+
+        // 如果有前进动力
+        if ( inputNavVector.length() > 0 || targetMoveVector.length() > 0 || ! this.playerOnFloor ) {
+            this.playerVelocity.addScaledVector( this.playerVelocity, damping );
+        } else {
+            if (currVelocityVector.length() + stdVelocity * damping > 0.1) {
+                let stdVelocityVector = currVelocityVector.normalize().multiplyScalar(stdVelocity);
+                this.playerVelocity.addScaledVector( stdVelocityVector, damping );
+            } else {
+                this.playerVelocity.x = 0;
+                this.playerVelocity.z = 0;
+            }
+        }
+
         // 获取输入中的player跳跃flag，true标识此刻player开始跳跃
         let playerToJump = this.input.getJumpFlag();
         // 如果player在地板上
@@ -648,15 +735,6 @@ export class PlayerController {
                 this.isPlayerJumping = false;
             }
         }
-
-        // 处理空中空气阻力和重力加速度对player位置和速度的影响
-        let damping = Math.exp( - 4 * deltaTime ) - 1;
-        if ( ! this.playerOnFloor ) {
-            this.playerVelocity.y -= this.settings.gravity * deltaTime;
-            // small air resistance
-            damping *= 0.1;
-        } 
-        this.playerVelocity.addScaledVector( this.playerVelocity, damping );
 
         // 处理player碰撞检测
         const deltaPosition = this.playerVelocity.clone().multiplyScalar( deltaTime );
@@ -922,10 +1000,10 @@ class PlayerCtrlInput {
             window.addEventListener("resize", this.handleWindowResize.bind(this), false);
 
             // 注意，这里的passive参数必须设置，否则无法禁止浏览器对touch事件的响应
-            document.addEventListener('touchstart', this.handleTouchStart.bind(this),  { passive: false });
-            document.addEventListener('touchend', this.handleTouchEnd.bind(this),  { passive: false });
-            document.addEventListener('touchmove', this.handleTouchMove.bind(this),  { passive: false });
-            document.addEventListener('touchcancel', this.handleTouchCancel.bind(this),  { passive: false });
+            this.container.addEventListener('touchstart', this.handleTouchStart.bind(this),  { passive: false });
+            this.container.addEventListener('touchend', this.handleTouchEnd.bind(this),  { passive: false });
+            this.container.addEventListener('touchmove', this.handleTouchMove.bind(this),  { passive: false });
+            this.container.addEventListener('touchcancel', this.handleTouchCancel.bind(this),  { passive: false });
 
             // 触摸板禁止手指缩放
             document.addEventListener('wheel', function(event) {
@@ -1296,14 +1374,18 @@ export class PlayerCtrlFSM extends FiniteStateMachine {
     /**
      * @returns 是否存在需要移动的任务
      */
-    private hasTaskNeedMove() {
-        return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needMove;	
+    private hasTaskNeedMove(): boolean {
+        if (this.context.currentTask && !this.context.currentTask.taskContext.inPosition) {
+            return true;
+        }
+        return false;
     }
 
     /**
      * @returns 是否存在需要跑步移动的任务
      */
     private hasTaskNeedRun() {
-        return this.context.tasks.length > 0 && this.context.tasks[0][1].userData.needRun;	
+        // return this.context.currentTask && !this.context.currentTask.taskContext.inPosition;	
+        return false;
     }
 }
